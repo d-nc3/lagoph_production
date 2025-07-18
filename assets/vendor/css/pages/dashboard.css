@@ -1,0 +1,44 @@
+.card {
+    border-radius: 12px;
+    transition: all 0.3s ease-in-out;
+  }
+
+  .progress {
+    height: 8px;
+    border-radius: 5px;
+  }
+
+  .list-group-item {
+    border: none;
+    padding: 8px 0;
+  }
+
+  .carousel-item img {
+    border-radius: 12px;
+    object-fit: cover;
+    /* Ensures the image fits nicely */
+    max-height: 350px;
+    /* Controls image height for uniformity */
+  }
+
+  /* Gradient overlay for better text visibility */
+  .carousel-caption {
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0));
+    border-radius: 12px;
+
+  }
+
+  /* Adjust button style */
+  .carousel-control-prev-icon,
+  .carousel-control-next-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .carousel-caption {
+    font-size: 0.9rem;
+     /* Add a proper padding value */
+  }
+}

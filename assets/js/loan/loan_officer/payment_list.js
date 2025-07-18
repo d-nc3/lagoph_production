@@ -1,0 +1,241 @@
+$(function () {
+  var table = $(".datatables-payment");
+  const userId = $("#user_id").val();
+  if (table.length) {
+    var dt = table.DataTable({
+      lengthMenu: [
+        [10, 25, 50, -1],
+        [10, 25, 50, "All"],
+      ],
+      processing: !0,
+      serverSide: !0,
+      ajax: {
+        url: `${BASE_URL}Transaction/Transaction/payment_dt_list`,
+        type: "POST",
+        data: function (d) {
+          d.user_id = userId;
+        },
+      },
+      columns: [
+        { data: null },
+        { data: "id" },
+        { data: "name" },
+        { data: "payment_date" },
+        { data: "status" },
+        { data: null },
+      ],
+      columnDefs: [
+        {
+          targets: 0,
+          className: "control",
+          searchable: !1,
+          orderable: !1,
+          responsivePriority: 2,
+          render: function (data, type, full, meta) {
+            return "";
+          },
+        },
+        {
+          targets: 1,
+          render: function (data, type, full, meta) {
+            var $id = full.id;
+            return "<span>" + $id + "</span>";
+          },
+        },
+        {
+          targets: 2,
+          responsivePriority: 4,
+          render: function (data, type, full, meta) {
+            var $user_name = full.first_name + full.last_name;
+            return "<span>" + $user_name + "</span>";
+          },
+        },
+        {
+          targets: 3,
+          render: function (data, type, full, meta) {
+            const formattedDate = moment(full.payment_date).format(
+              "MMMM D, YYYY"
+            );
+            return `<span>${formattedDate}</span>`;
+          },
+        },
+        {
+          targets: 4,
+          render: function (data, type, full, meta) {
+            var status = full.status;
+            var statusClass = "";
+            switch (status.toLowerCase()) {
+              case "completed":
+                statusClass = "badge bg-success";
+                break;
+              case "pending":
+                statusClass = "badge bg-warning";
+                break;
+              case "overdue":
+                statusClass = "badge bg-danger";
+                break;
+              default:
+                statusClass = "badge bg-secondary";
+            }
+
+            return `<span class="${statusClass}">${status}</span>`;
+          },
+        },
+        {
+          targets: -1,
+          title: "Actions",
+          searchable: !1,
+          orderable: !1,
+          render: function (data, type, full, meta) {
+            console.log(full.due_date);
+            return `
+
+						<a href="#"
+
+						class="btn btn-sm btn-primary view_modal"
+
+						data-bs-toggle="modal"
+
+						data-bs-target="#data_table_modal"
+
+						data-date-due="${full["due_date"]}"
+
+						data-amount-due="${full["amount_due"]}">
+
+						<i class="bx bx-show me-1"></i> <span class="d-md-inline-block">View</span>
+
+						</a>`;
+          },
+        },
+      ],
+      order: [[0, "asc"]],
+    });
+    dt.on("draw", function () {
+      handleGetItem();
+    });
+    dt.on("responsive-display", function () {
+      handleGetItem();
+    });
+  }
+
+  var fetchDetails = function (url, itemId, successCallback, clearCallback) {
+    if (itemId) {
+      $.ajax({
+        url: `${BASE_URL}${url}`,
+        type: "POST",
+        data: { id: itemId },
+        dataType: "json",
+        success: successCallback,
+        error: function () {
+          alert("Failed to fetch item details");
+        },
+      });
+    } else {
+      clearCallback();
+    }
+  };
+  $(document).on("change", ".items", function () {
+    var itemId = $(this).val();
+    var repeaterItem = $(this).closest("[data-repeater-item]");
+    fetchDetails(
+      "Cashiering/get_item",
+      itemId,
+      function (data) {
+        repeaterItem.find(".item-price").val(data.amount);
+        updateTotalPrice(repeaterItem);
+      },
+      function () {
+        repeaterItem.find(".item-price").val("");
+        repeaterItem.find(".total-price").val("");
+      }
+    );
+  });
+  $(document).on("input", ".item-qty", function () {
+    var repeaterItem = $(this).closest("[data-repeater-item]");
+    updateTotalPrice(repeaterItem);
+  });
+  var calculateTotalSum = () => {
+    var totalSum = 0;
+    $("[data-repeater-item]").each(function () {
+      var itemTotal = parseFloat($(this).find(".total-price").val()) || 0;
+      totalSum += itemTotal;
+    });
+    $("#subTotal").text(totalSum.toFixed(2));
+    $("#total").text(totalSum.toFixed(2));
+  };
+  function updateTotalPrice(repeaterItem) {
+    var quantity = parseFloat(repeaterItem.find(".item-qty").val()) || 0;
+    var price = parseFloat(repeaterItem.find(".item-price").val()) || 0;
+    var totalPrice = quantity * price;
+    repeaterItem.find(".total-price").val(totalPrice.toFixed(2));
+    calculateTotalSum();
+  }
+
+  $(".view_data").on("click", function (e) {
+    e.preventDefault();
+    var itemId = $(this).val("data-id");
+    if (!itemId) {
+      console.error("Item ID not found");
+      return;
+    }
+  });
+  var handleGetItem = function () {
+    const view_invoice = document.querySelectorAll(".view_data");
+    view_invoice.forEach((d) => {
+      d.addEventListener("click", function (e) {
+        e.preventDefault();
+        const id = $(this).data("id");
+        showBlockUI();
+        $.ajax({
+          url: `${BASE_URL}Transaction/Transaction/get_item_data`,
+          type: "POST",
+          async: !0,
+          data: { id: id },
+          dataType: "json",
+          success: function (response) {
+            hideBlockUI();
+            if (response) {
+              $("#itemDetails").val(response.item_id).trigger("change");
+              $("#itemPrice").val(response.unit_cost);
+              $("#itemQuantity").val(response.quantity);
+              $("#unit").val(response.unit);
+              $("#itemTotal").val(response.total_cost);
+              $("#referenceNo").val(response.reference_number);
+              $("#accountNum").val(response.account_number);
+              $("#accountName").val(response.account_name);
+              $("#totalPayment").val(response.total_payment);
+              $("#transactionCategory")
+                .val(response.transaction_category_id)
+                .trigger("change");
+              $("#paymentMode").val(response.account_type_id).trigger("change");
+              $("#paymentMethod").val(response.payment_method_id);
+              setTimeout(function () {
+                $("#paymentMethod")
+                  .val(response.payment_method_id)
+                  .trigger("change");
+              }, 300);
+            } else {
+              Swal.fire({
+                text: "Sorry, looks like there are some errors detected, please try again.",
+                icon: "error",
+                buttonsStyling: !1,
+                confirmButtonText: "Ok, got it!",
+                customClass: { confirmButton: "btn btn-primary" },
+              });
+            }
+          },
+          error: function (xhr) {
+            hideBlockUI();
+            Swal.fire({
+              text: "Sorry, looks like there are some errors detected, please try again.",
+              icon: "error",
+              buttonsStyling: !1,
+              confirmButtonText: "Ok, got it!",
+              customClass: { confirmButton: "btn btn-primary" },
+            });
+          },
+        });
+      });
+    });
+  };
+});
