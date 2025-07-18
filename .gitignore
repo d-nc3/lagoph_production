@@ -9,7 +9,7 @@
 !/application/logs/index.html
 
 # 🔑 Custom credentials file (if you separate sensitive constants)
-application/config/credentials.php
+application/config/constants.php
 
 # 🧪 Testing or temp files
 *.log
